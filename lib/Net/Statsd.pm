@@ -5,6 +5,7 @@ package Net::Statsd;
 
 use strict;
 use warnings;
+use Carp ();
 use IO::Socket ();
 
 our $HOST = 'localhost';
@@ -85,6 +86,10 @@ Time is assumed to be in milliseconds (ms).
 sub timing {
     my ($stat, $time, $sample_rate) = @_;
 
+    if (! defined $sample_rate) {
+        $sample_rate = 1;
+    }
+
     my $stats = {
         $stat => sprintf "%d|ms", $time
     };
@@ -155,8 +160,13 @@ every x number of times (0.1 = 10% of the times).
 sub update_stats {
     my ($stats, $delta, $sample_rate) = @_;
 
-    $delta = 1 unless defined $delta;
-    $sample_rate = 1 unless defined $sample_rate;
+    if (! defined $delta) {
+        $delta = 1;
+    }
+
+    if (! defined $sample_rate) {
+        $sample_rate = 1;
+    }
 
     if (! ref $stats) {
         $stats = [ $stats ];
@@ -170,7 +180,53 @@ sub update_stats {
     return Net::Statsd::send(\%data, $sample_rate)
 }
 
-=head2 C<send(\%data, $sample_rate=1)>
+=head2 C<_sample_data(\%data, $sample_rate = 1)>
+
+B<This method is used internally, it's not part of the public interface.>
+
+Takes care of transforming a hash of metrics data into
+a B<sampled> hash of metrics data, according to the given
+C<$sample_rate>.
+
+If C<$sample_rate == 1>, then sampled data is exactly the
+incoming data.
+
+If C<$sample_rate = 0.2>, then every metric value will be I<marked>
+with the given sample rate, so the Statsd server will automatically
+scale it. For example, with a sample rate of 0.2, the metric values
+will be multiplied by 5.
+
+=cut
+
+sub _sample_data {
+    my ($data, $sample_rate) = @_;
+
+    my $sampled_data;
+
+    if (! $data || ref $data ne 'HASH') {
+        Carp::croak("No data?");
+    }
+
+    if (! defined $sample_rate) {
+        $sample_rate = 1;
+    }
+
+    if ($sample_rate < 1) {
+        if (rand() <= $sample_rate) {
+            while (my ($stat, $value) = each %{ $data }) {
+                $sampled_data->{$stat} = sprintf "%s|@%s", $value, $sample_rate;
+            }
+        }
+    }
+
+    else {
+        $sampled_data = $data;
+    }
+
+    return $sampled_data;
+}
+
+=head2 C<send(\%data, $sample_rate = 1)>
 
 Squirt the metrics over UDP.
 
@@ -181,17 +237,9 @@ Squirt the metrics over UDP.
 sub send {
     my ($data, $sample_rate) = @_;
 
-    my %sampled_data;
-
-    if ($sample_rate < 1) {
-        if (rand() <= $sample_rate) {
-            while (my ($stat, $value) = each %{ $data }) {
-                $sampled_data{$stat} = sprintf "%s|@%s", $value, $sample_rate;
-            }
-        }
-    }
-    else {
-        %sampled_data = %{ $data };
+    my $sampled_data = _sample_data($data, $sample_rate);
+    if (! $sampled_data) {
+        Carp::croak("No (sampled) data to be sent?");
     }
 
     my $udp_sock = IO::Socket::INET->new(
@@ -207,8 +255,8 @@ sub send {
 
     my $all_sent = 1;
 
-    for my $stat (keys %sampled_data) {
-        my $value =$data->{$stat};
+    for my $stat (keys %{ $sampled_data }) {
+        my $value = $data->{$stat};
         my $packet = "$stat:$value";
         $udp_sock->send($packet);
         # XXX If you want warnings...
