@@ -30,7 +30,7 @@ Net::Statsd - Perl client for Etsy's statsd daemon
 =head1 DESCRIPTION
 
 This module implement a UDP client for the B<statsd> statistics
-collector daemon in use at Etsy (http://www.etsy.com).
+collector daemon in use at Etsy.com.
 
 You want to use this module to track statistics in your Perl
 application, such as how many times a certain event occurs
@@ -119,7 +119,26 @@ every x number of times (0.1 = 10% of the times).
 
 =cut
 
-=head2 C<send(\%data, $sample_rate=1)>
+=head2 C<_sample_data(\%data, $sample_rate = 1)>
+
+B<This method is used internally, it's not part of the public interface.>
+
+Takes care of transforming a hash of metrics data into
+a B<sampled> hash of metrics data, according to the given
+C<$sample_rate>.
+
+If C<$sample_rate == 1>, then sampled data is exactly the
+incoming data.
+
+If C<$sample_rate = 0.2>, then every metric value will be I<marked>
+with the given sample rate, so the Statsd server will automatically
+scale it. For example, with a sample rate of 0.2, the metric values
+will be multiplied by 5.
+
+
+=cut
+
+=head2 C<send(\%data, $sample_rate = 1)>
 
 Squirt the metrics over UDP.
 
