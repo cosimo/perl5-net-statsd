@@ -256,7 +256,7 @@ sub send {
     my $all_sent = 1;
 
     for my $stat (keys %{ $sampled_data }) {
-        my $value = $data->{$stat};
+        my $value = $sampled_data->{$stat};
         my $packet = "$stat:$value";
         $udp_sock->send($packet);
         # XXX If you want warnings...
