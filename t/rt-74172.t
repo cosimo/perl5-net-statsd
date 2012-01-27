@@ -40,7 +40,7 @@ my $samples = 0;
 my $tries = 10000;
 my $sample_rate = 0.5;
 for (1 .. $tries) {
-    if ($sampled_data = Net::Statsd::_sample_data($data, $sample_rate)) {
+    if (keys(%{Net::Statsd::_sample_data($data, $sample_rate)})) {
         $samples++;
     }
 }
