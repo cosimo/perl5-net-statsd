@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 10;
+use Test::More tests => 13;
 use Net::Statsd;
 
 my $dirname;
@@ -47,4 +47,42 @@ cmp_ok(scalar(@{$msgs->[0]->{counters}}), '==', 1);
 cmp_ok($msgs->[0]->{counters}->[0], '==', 1);
 is($msgs->[0]->{sample_rate}, '0.99');
 
+Net::Statsd::increment([qw(test.counter_1 test.counter_2)]);
+$msgs = MockServer::get_and_reset_messages();
+cmp_ok(scalar(@{$msgs}), '==', 2, 'test increment with array input');
+map {delete $_->{_raw_data}} @{$msgs};
+@{$msgs} = sort {$a->{key} cmp $b->{key}} @{$msgs};
+is_deeply($msgs,
+    [
+        {
+            key => 'test.counter_1',
+            counters => [1]
+        },
+        {
+            key => 'test.counter_2',
+            counters => [1]
+        },
+    ]
+);
+
+note("the following test is similar to the direct _sample_data test in another file, but validates sent data"); 
+my $tries = 10000;
+my $sample_rate = 0.5;
+my @messages;
+for (1 .. $tries) {
+    Net::Statsd::increment('test.counter', $sample_rate) ;
+    # read messages from the udp queue to prevent from filling up...
+    if ($_ % 50 == 0) {
+        push (@messages, @{MockServer::get_and_reset_messages()});
+    }
+}
+
+my $expected_seen = $tries * $sample_rate;
+my $num_seen = scalar(@messages);
+note("Got $num_seen samples out of $tries tries.");
+cmp_ok(
+    int(abs($num_seen - $expected_seen)),
+    '<=',
+    (int($expected_seen * 0.05) | 1),
+    "5% delta or less");
 

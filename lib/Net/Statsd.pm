@@ -35,9 +35,11 @@ Net::Statsd - Perl client for Etsy's statsd daemon
     my $start_time = [ Time::HiRes::gettimeofday ];
 
     # do the complex database query
+    # note: time value sent to timing should
+    # be in milliseconds.
     Net::Statsd::timing(
         'database.complexquery',
-        Time::HiRes::tv_interval($start_time)
+        Time::HiRes::tv_interval($start_time) * 1000
     );
 
 =head1 DESCRIPTION
@@ -69,6 +71,17 @@ with:
     $Net::Statsd::PORT = 9999;
 
 just after including the C<Net::Statsd> module.
+
+=head1 ABOUT SAMPLING
+
+A note about sample rate: A sample rate of < 1 instructs this 
+library to send only the specified percentage of the samples to 
+the server. As such, the application code should call this module 
+for every occurence of each metric and allow this library to 
+determine which specific measurements to deliver, based on the
+sample_rate value. (e.g. a sample rate of 0.5 would indicate that 
+approximately only half of the metrics given to this module would 
+actually be sent to statsd). 
 
 =head1 FUNCTIONS
 
@@ -113,6 +126,7 @@ you can B<pass an array reference>:
     Net::Statsd::increment(['grue.dinners', 'room.lamps'], 1);
 
 B<You can also use "inc()" instead of "increment()" to type less>.
+
 
 =cut
 
@@ -201,7 +215,7 @@ will be multiplied by 5.
 sub _sample_data {
     my ($data, $sample_rate) = @_;
 
-    my $sampled_data;
+    my $sampled_data = {};
 
     if (! $data || ref $data ne 'HASH') {
         Carp::croak("No data?");
