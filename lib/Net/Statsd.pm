@@ -74,14 +74,14 @@ just after including the C<Net::Statsd> module.
 
 =head1 ABOUT SAMPLING
 
-A note about sample rate: A sample rate of < 1 instructs this 
-library to send only the specified percentage of the samples to 
-the server. As such, the application code should call this module 
-for every occurence of each metric and allow this library to 
+A note about sample rate: A sample rate of < 1 instructs this
+library to send only the specified percentage of the samples to
+the server. As such, the application code should call this module
+for every occurence of each metric and allow this library to
 determine which specific measurements to deliver, based on the
-sample_rate value. (e.g. a sample rate of 0.5 would indicate that 
-approximately only half of the metrics given to this module would 
-actually be sent to statsd). 
+sample_rate value. (e.g. a sample rate of 0.5 would indicate that
+approximately only half of the metrics given to this module would
+actually be sent to statsd).
 
 =head1 FUNCTIONS
 
@@ -90,7 +90,7 @@ actually be sent to statsd).
 =head2 C<timing($stat, $time, $sample_rate = 1)>
 
 Log timing information.
-Time is assumed to be in milliseconds (ms).
+B<Time is assumed to be in milliseconds (ms)>.
 
     Net::Statsd::timing('some.time', 500);
 
