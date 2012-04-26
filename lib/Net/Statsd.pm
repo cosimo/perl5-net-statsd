@@ -249,6 +249,24 @@ sub _sample_data {
     return $sampled_data;
 }
 
+=head2 C<gauge($stat, $gauge)>
+
+Log arbitrary values.
+
+    Net::Statsd::gauge('some.thing', 15);
+
+=cut
+
+sub gauge {
+    my ($stat, $gauge) = @_;
+
+    my $stats = {
+        $stat => sprintf "%d|g", $gauge
+    };
+
+    return Net::Statsd::send($stats, 1);
+}
+
 =head2 C<send(\%data, $sample_rate = 1)>
 
 Squirt the metrics over UDP.
