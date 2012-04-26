@@ -260,8 +260,11 @@ Log arbitrary values.
 sub gauge {
     my ($stat, $gauge) = @_;
 
+    $gauge = 0 unless defined $gauge;
+
+    # Didn't use '%d' because values might be floats
     my $stats = {
-        $stat => sprintf "%d|g", $gauge
+        $stat => sprintf "%s|g", $gauge
     };
 
     return Net::Statsd::send($stats, 1);
