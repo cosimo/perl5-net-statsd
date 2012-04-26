@@ -19,7 +19,7 @@ BEGIN {
 
 use strict;
 use warnings;
-use Test::More tests => 7;
+use Test::More tests => 10;
 use Net::Statsd;
 
 my $dirname;
@@ -87,6 +87,16 @@ is_deeply($msgs, [
     { key => 'test.counter_1', counters => [1] },
     { key => 'test.counter_2', counters => [1] },
 ], "Received back the two events");
+
+Net::Statsd::gauge('oxygen.level', 0.98);
+$msgs = MockServer::get_and_reset_messages();
+ok(ref $msgs eq 'ARRAY');
+is(scalar @{ $msgs } => 1);
+is_deeply($msgs, [ {
+    key => 'oxygen.level',
+    gauges => [0.98],
+    _raw_data => 'oxygen.level:0.98|g',
+} ], "Gauge message was stored correctly");
 
 note("The following test validates sent data");
 
