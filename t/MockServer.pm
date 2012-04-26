@@ -34,23 +34,38 @@ sub run {
         last if $_data =~ /^quit/i;
         
         my @bits = split(':', $_data);
+
         my $key = shift @bits;
         $key =~ s/\s+/_/g;
         $key =~ s/\//-/g;
         $key =~ s/[^a-zA-Z_\-0-9\.]//g;
         $msg->{key} = $key;
-        push (@bits, 1) if (@bits == 0 || ! defined($bits[0]));
-        foreach (@bits) {
-            my @fields = split(/\|/);
-            if (@fields == 1 || !defined($fields[1])) {
+
+        if (@bits == 0 || ! defined $bits[0]) {
+            push @bits, 1;
+        }
+
+        for (@bits) {
+            my @fields = split m{\|};
+
+            if (@fields == 1 || ! defined $fields[1]) {
                 $msg->{error} = "bad line";
                 next;
             }
-            
+
+            # Timer
             if ($fields[1] eq 'ms') {
                 $msg->{timers} = [] unless $msg->{timers};
                 push @{$msg->{timers}}, $fields[0];
             }
+
+            # Gauge (FIXME I'll just pretend this is correct)
+            elsif ($fields[1] eq 'g') {
+                $msg->{gauges} = [] unless $msg->{gauges};
+                push @{$msg->{gauges}}, $fields[0];
+            }
+
+            # Counter, evt. sampled
             else {
                 if ($fields[2] && $fields[2] =~ /^\s*@([\d\.]+)/) {
                     $msg->{sample_rate} = $1;
