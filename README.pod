@@ -152,6 +152,15 @@ will be multiplied by 5.
 
 =cut
 
+=head2 C<gauge($stat, $gauge)>
+
+Log arbitrary values.
+
+    Net::Statsd::gauge('some.thing', 15);
+
+
+=cut
+
 =head2 C<send(\%data, $sample_rate = 1)>
 
 Squirt the metrics over UDP.
