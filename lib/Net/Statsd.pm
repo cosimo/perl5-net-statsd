@@ -42,6 +42,11 @@ Net::Statsd - Perl client for Etsy's statsd daemon
         Time::HiRes::tv_interval($start_time) * 1000
     );
 
+    #
+    # Log metric values
+    #
+    Net::Statsd::gauge('core.temperature' => 55);
+
 =head1 DESCRIPTION
 
 This module implement a UDP client for the B<statsd> statistics
@@ -87,30 +92,32 @@ actually be sent to statsd).
 
 =cut
 
-=head2 C<timing($stat, $time, $sample_rate = 1)>
+=head2 C<timing($name, $time, $sample_rate = 1)>
 
 Log timing information.
 B<Time is assumed to be in milliseconds (ms)>.
 
-    Net::Statsd::timing('some.time', 500);
+    Net::Statsd::timing('some.timer', 500);
 
 =cut
 
 sub timing {
-    my ($stat, $time, $sample_rate) = @_;
+    my ($name, $time, $sample_rate) = @_;
 
     if (! defined $sample_rate) {
         $sample_rate = 1;
     }
 
     my $stats = {
-        $stat => sprintf "%d|ms", $time
+        $name => sprintf "%d|ms", $time
     };
 
     return Net::Statsd::send($stats, $sample_rate);
 }
 
-=head2 C<increment($stats, $sample_rate=1)>
+=head2 C<increment($counter, $sample_rate=1)>
+
+=head2 C<increment(\@counter, $sample_rate=1)>
 
 Increments one or more stats counters
 
@@ -138,7 +145,7 @@ sub increment {
 
 *inc = *increment;
 
-=head2 C<decrement($stats, $sample_rate=1)>
+=head2 C<decrement($counter, $sample_rate=1)>
 
 Same as increment, but decrements. Yay.
 
@@ -249,22 +256,22 @@ sub _sample_data {
     return $sampled_data;
 }
 
-=head2 C<gauge($stat, $gauge)>
+=head2 C<gauge($name, $value)>
 
-Log arbitrary values.
+Log arbitrary values, as a temperature, or server load.
 
-    Net::Statsd::gauge('some.thing', 15);
+    Net::Statsd::gauge('core.temperature', 55);
 
 =cut
 
 sub gauge {
-    my ($stat, $gauge) = @_;
+    my ($name, $value) = @_;
 
-    $gauge = 0 unless defined $gauge;
+    $value = 0 unless defined $value;
 
     # Didn't use '%d' because values might be floats
     my $stats = {
-        $stat => sprintf "%s|g", $gauge
+        $name => sprintf "%s|g", $value
     };
 
     return Net::Statsd::send($stats, 1);
@@ -320,12 +327,4 @@ sub send {
     return $all_sent;
 }
 
-unless (caller) {
-    Net::Statsd::increment('test.counter1');
-    Net::Statsd::increment('test.counter2');
-    Net::Statsd::decrement('test.counter1');
-    Net::Statsd::decrement('test.counter2');
-}
-
 1;
-
