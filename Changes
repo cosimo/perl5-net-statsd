@@ -1,0 +1,10 @@
+Change history for Net::Statsd
+
+0.06 - Thu Jul 26 13:05:19 CEST 2012
+
+    Changed ordering of functions and POD documentation
+    to clarify public and private methods a bit more.
+    Thanks to Andreas Marienborg.
+
+0.05 and below, let's consider them initial release
+
