@@ -201,61 +201,6 @@ sub update_stats {
     return Net::Statsd::send(\%data, $sample_rate)
 }
 
-=head2 C<_sample_data(\%data, $sample_rate = 1)>
-
-B<This method is used internally, it's not part of the public interface.>
-
-Takes care of transforming a hash of metrics data into
-a B<sampled> hash of metrics data, according to the given
-C<$sample_rate>.
-
-If C<$sample_rate == 1>, then sampled data is exactly the
-incoming data.
-
-If C<$sample_rate = 0.2>, then every metric value will be I<marked>
-with the given sample rate, so the Statsd server will automatically
-scale it. For example, with a sample rate of 0.2, the metric values
-will be multiplied by 5.
-
-=cut
-
-sub _sample_data {
-    my ($data, $sample_rate) = @_;
-
-    if (! $data || ref $data ne 'HASH') {
-        Carp::croak("No data?");
-    }
-
-    if (! defined $sample_rate) {
-        $sample_rate = 1;
-    }
-
-    # Sample rate > 1 doesn't make sense though
-    if ($sample_rate >= 1) {
-        return $data;
-    }
-
-    my $sampled_data;
-
-    # Perform sampling here, so that clients using Net::Statsd
-    # don't have to do it every time. This is the same
-    # implementation criteria used in the other statsd client libs
-    #
-    # If rand() doesn't trigger, then no data will be sent
-    # to the statsd server, which is what we want.
-
-    if (rand() <= $sample_rate) {
-        while (my ($stat, $value) = each %{ $data }) {
-            # Uglier, but if there's no data to be sampled,
-            # we get a clean undef as returned value
-            $sampled_data ||= {};
-            $sampled_data->{$stat} = sprintf "%s|@%s", $value, $sample_rate;
-        }
-    }
-
-    return $sampled_data;
-}
-
 =head2 C<gauge($name, $value)>
 
 Log arbitrary values, as a temperature, or server load.
@@ -325,6 +270,61 @@ sub send {
     }
 
     return $all_sent;
+}
+
+=head2 C<_sample_data(\%data, $sample_rate = 1)>
+
+B<This method is used internally, it's not part of the public interface.>
+
+Takes care of transforming a hash of metrics data into
+a B<sampled> hash of metrics data, according to the given
+C<$sample_rate>.
+
+If C<$sample_rate == 1>, then sampled data is exactly the
+incoming data.
+
+If C<$sample_rate = 0.2>, then every metric value will be I<marked>
+with the given sample rate, so the Statsd server will automatically
+scale it. For example, with a sample rate of 0.2, the metric values
+will be multiplied by 5.
+
+=cut
+
+sub _sample_data {
+    my ($data, $sample_rate) = @_;
+
+    if (! $data || ref $data ne 'HASH') {
+        Carp::croak("No data?");
+    }
+
+    if (! defined $sample_rate) {
+        $sample_rate = 1;
+    }
+
+    # Sample rate > 1 doesn't make sense though
+    if ($sample_rate >= 1) {
+        return $data;
+    }
+
+    my $sampled_data;
+
+    # Perform sampling here, so that clients using Net::Statsd
+    # don't have to do it every time. This is the same
+    # implementation criteria used in the other statsd client libs
+    #
+    # If rand() doesn't trigger, then no data will be sent
+    # to the statsd server, which is what we want.
+
+    if (rand() <= $sample_rate) {
+        while (my ($stat, $value) = each %{ $data }) {
+            # Uglier, but if there's no data to be sampled,
+            # we get a clean undef as returned value
+            $sampled_data ||= {};
+            $sampled_data->{$stat} = sprintf "%s|@%s", $value, $sample_rate;
+        }
+    }
+
+    return $sampled_data;
 }
 
 1;
