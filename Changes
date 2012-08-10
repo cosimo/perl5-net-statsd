@@ -1,5 +1,14 @@
 Change history for Net::Statsd
 
+0.07 - Fri Aug 10 09:16:20 CEST 2012
+
+    Fixed tests failure when an already existing statsd server
+    was already running on port 8125. The mock server will now
+    use any available unprivileged port instead of 8125.
+
+    Thanks to Joseph Crotty for reporting the problem and to
+    Jacob Rideout for providing a working patch.
+
 0.06 - Thu Jul 26 13:05:19 CEST 2012
 
     Changed ordering of functions and POD documentation
