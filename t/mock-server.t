@@ -39,7 +39,11 @@ by validating the udp messages sent to a mock server
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 DESCRIPTION
 
+# Mock server will start on any available unprivileged port
 $Net::Statsd::PORT = MockServer::start();
+
+note "Mock server started on localhost:${Net::Statsd::PORT}";
+
 my $msgs;
 
 Net::Statsd::timing('test.timer', 345);

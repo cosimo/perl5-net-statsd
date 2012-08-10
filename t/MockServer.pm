@@ -8,11 +8,13 @@ $| = 1;
 use vars qw ($socket @messages $select);
 
 sub start {
+
+    # No LocalPort means use any available unprivileged port
     $socket = new IO::Socket::INET(
         LocalAddr => '127.0.0.1',
         Proto     => 'udp',
     ) or die "unable to create socket: $!\n";
-    
+
     $select = IO::Select->new($socket);
     reset_messages();
     return $socket->sockport(); 
