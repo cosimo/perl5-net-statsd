@@ -3,20 +3,19 @@ use strict;
 use IO::Socket::INET;
 use IO::Select;
 
-use constant PORT => 8125;
-
 $| = 1;
 
 use vars qw ($socket @messages $select);
 
 sub start {
     $socket = new IO::Socket::INET(
-        LocalPort => PORT,
+        LocalAddr => '127.0.0.1',
         Proto     => 'udp',
     ) or die "unable to create socket: $!\n";
     
     $select = IO::Select->new($socket);
     reset_messages();
+    return $socket->sockport(); 
 }
 
 my $_data = "";
@@ -94,7 +93,7 @@ sub reset_messages { @messages = () }
 
 sub stop {
     my $s_send = IO::Socket::INET->new(
-        PeerAddr  => '127.0.0.1:'. PORT,
+        PeerAddr  => '127.0.0.1:'. $socket->sockport(),
         Proto     => 'udp',
     ) or die "failed to create client socket: $!\n";
     $s_send->send("quit");
