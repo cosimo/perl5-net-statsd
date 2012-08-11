@@ -1,5 +1,16 @@
 Change history for Net::Statsd
 
+0.08 - Sat Aug 11 22:55:53 CEST 2012
+
+    Improved performance by a ~13x factor, optimizing the
+    send code and reusing the same socket instead of creating
+    a new one every time.
+
+    Added a benchmarking script, to measure Net::Statsd
+    throughput in msg/s.
+
+    Thanks to Tim Bunce for these great patches.
+
 0.07 - Fri Aug 10 09:16:20 CEST 2012
 
     Fixed tests failure when an already existing statsd server
@@ -16,4 +27,3 @@ Change history for Net::Statsd
     Thanks to Andreas Marienborg.
 
 0.05 and below, let's consider them initial release
-
