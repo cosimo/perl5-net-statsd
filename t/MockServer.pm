@@ -56,13 +56,11 @@ sub run {
 
             # Timer
             if ($fields[1] eq 'ms') {
-                $msg->{timers} = [] unless $msg->{timers};
                 push @{$msg->{timers}}, $fields[0];
             }
 
             # Gauge (FIXME I'll just pretend this is correct)
             elsif ($fields[1] eq 'g') {
-                $msg->{gauges} = [] unless $msg->{gauges};
                 push @{$msg->{gauges}}, $fields[0];
             }
 
@@ -71,7 +69,6 @@ sub run {
                 if ($fields[2] && $fields[2] =~ /^\s*@([\d\.]+)/) {
                     $msg->{sample_rate} = $1;
                 }
-                $msg->{counters} = [] unless $msg->{counters};
                 push @{$msg->{counters}}, $fields[0];
             }
         }
