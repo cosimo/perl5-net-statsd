@@ -268,15 +268,19 @@ sub send {
 
     my $all_sent = 1;
 
-    for my $stat (keys %{ $sampled_data }) {
-        my $value = $sampled_data->{$stat};
+    keys %{ $sampled_data }; # reset iterator
+    while ( my ($stat, $value) = each %{ $sampled_data } ) {
         my $packet = "$stat:$value";
-        $SOCK->send($packet);
-        # XXX If you want warnings...
-        # or do {
-        #    warn "[" . localtime() . "] UDP packet '$packet' send failed\n";
-        #    $all_sent = 0;
-        #};
+        # send() returns the number of characters sent, or undef on error.
+        my $r = send($SOCK, $packet, 0);
+        if (!defined $r) {
+            #warn "Net::Statsd send error: $!";
+            $all_sent = 0;
+        }
+        elsif ($r != length($packet)) {
+            #warn "Net::Statsd send truncated: $!";
+            $all_sent = 0;
+        }
     }
 
     return $all_sent;
