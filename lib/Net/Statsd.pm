@@ -11,6 +11,9 @@ use IO::Socket ();
 our $HOST = 'localhost';
 our $PORT = 8125;
 
+my $SOCK;
+my $SOCK_PEER;
+
 =head1 NAME
 
 Net::Statsd - Perl client for Etsy's statsd daemon
@@ -242,26 +245,33 @@ sub send {
         return;
     }
 
-    my $udp_sock = IO::Socket::INET->new(
-        Proto    => 'udp',
-        PeerAddr => $HOST,
-        PeerPort => $PORT,
-    ) or do {
-        # warn perhaps?
-        return
-    };
+    # cache the socket to avoid dns and socket creation overheads
+    # (this boosts performance from ~6k to >60k sends/sec)
+    if (!$SOCK || !$SOCK_PEER || "$HOST:$PORT" ne $SOCK_PEER) {
 
-    # We don't want to die if Net::Statsd::send() doesn't work...
-    # We could though:
-    #
-    # or die "Could not create UDP socket: $!\n";
+        $SOCK = IO::Socket::INET->new(
+            Proto    => 'udp',
+            PeerAddr => $HOST,
+            PeerPort => $PORT,
+        ) or do {
+            Carp::carp("Net::Statsd can't create a socket to $HOST:$PORT: $!")
+                unless our $_warn_once->{"$HOST:$PORT"}++;
+            return
+        };
+        $SOCK_PEER = "$HOST:$PORT";
+
+        # We don't want to die if Net::Statsd::send() doesn't work...
+        # We could though:
+        #
+        # or die "Could not create UDP socket: $!\n";
+    }
 
     my $all_sent = 1;
 
     for my $stat (keys %{ $sampled_data }) {
         my $value = $sampled_data->{$stat};
         my $packet = "$stat:$value";
-        $udp_sock->send($packet);
+        $SOCK->send($packet);
         # XXX If you want warnings...
         # or do {
         #    warn "[" . localtime() . "] UDP packet '$packet' send failed\n";
