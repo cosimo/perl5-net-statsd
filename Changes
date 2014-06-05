@@ -1,5 +1,10 @@
 Change history for Net::Statsd
 
+0.09_01 - Thu Jun 05 18:09:01 CEST 2014
+
+    Implemented multi-metric gauge sending. Thanks to Ville Mattila for
+    the initial patch.
+
 0.09 - Wed Jun 04 16:23:01 CEST 2014
 
     Fixed RT#96097 (fsf address, thanks to David Dick for reporting)
