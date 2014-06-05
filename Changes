@@ -1,5 +1,9 @@
 Change history for Net::Statsd
 
+0.09 - Wed Jun 04 16:23:01 CEST 2014
+
+    Fixed RT#96097 (fsf address, thanks to David Dick for reporting)
+
 0.08 - Sat Aug 11 22:55:53 CEST 2012
 
     Improved performance by a ~13x factor, optimizing the
