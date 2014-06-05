@@ -19,7 +19,7 @@ BEGIN {
 
 use strict;
 use warnings;
-use Test::More tests => 10;
+use Test::More tests => 17;
 use Net::Statsd;
 
 my $dirname;
@@ -97,6 +97,56 @@ is_deeply($msgs, [ {
     _raw_data => 'oxygen.level:0.98|g',
 } ], "Gauge message was stored correctly");
 
+# -----------------------------------------------------------------------------
+note("Multi-metric packet test 1");
+
+my @multi_metric_values = (
+    'oxygen.level'   => 0.98,
+    'hydrogen.level' => 0.95,
+    'helium.level'   => 0.92);
+
+Net::Statsd::gauge(@multi_metric_values);
+
+$msgs = MockServer::get_and_reset_messages();
+ok(ref $msgs eq 'ARRAY');
+is(scalar @{ $msgs } => 3, "We should have got 3 messages in a single packet");
+my %expected_msg = @multi_metric_values;
+for (@{ $msgs }) {
+    my $key = $_->{key};
+    my $value = $_->{gauges}->[0];
+    # If we get the expected value, remove it
+    if ($value == $expected_msg{$key}) {
+        delete $expected_msg{$key};
+    }
+}
+is(scalar keys %expected_msg, 0, "Got all three metrics back");
+
+# -----------------------------------------------------------------------------
+note("Multi-metric packet test 2. Same metric twice.");
+
+MockServer::packets_received(); # reset
+
+Net::Statsd::gauge(
+    'core.temperature', 55,
+    'core.temperature', 56,
+);
+
+$msgs = MockServer::get_and_reset_messages();
+ok(ref $msgs eq 'ARRAY');
+is(scalar @{ $msgs } => 1,
+    "Multiple values for same metric should be aggregated in the same messge");
+
+#use Data::Dumper; diag(Dumper($msgs));
+is_deeply($msgs, [ {
+    key => 'core.temperature',
+    gauges => [ 55, 56 ],
+    _raw_data => "core.temperature:55|g\ncore.temperature:56|g",
+} ]);
+
+is(MockServer::packets_received(), 1,
+    "Two metric values should have been sent in one packet");
+
+# -----------------------------------------------------------------------------
 note("The following test validates sent data");
 
 my $tries = 10000;

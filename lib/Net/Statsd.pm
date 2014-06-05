@@ -210,17 +210,48 @@ Log arbitrary values, as a temperature, or server load.
 
     Net::Statsd::gauge('core.temperature', 55);
 
+Statsd interprets gauge values with C<+> or C<-> sign as increment/decrement.
+Therefore, to explicitly set a gauge to a negative number it has to be set
+to zero first.
+
+However, if either the zero or the actual negative value is lost in UDP
+transport to statsd server because of e.g. network congestion or packet loss,
+your gauge will become skewed.
+
+To ensure network problems will not skew your data, C<Net::Statsd::gauge()>
+supports packing multiple values in single UDP packet sent to statsd:
+
+    Net::Statsd::gauge(
+        'core.temperature' => 55,
+        'freezer.temperature' => -18
+    );
+
+Make sure you don't supply too many values, or you might risk exceeding the
+MTU of the network interface and cause the resulting UDP packet to be dropped.
+
+In general, a safe limit should be 512 bytes. Related to the example
+above, C<core.temperature> of 55 will be likely packed as a string:
+
+    core.temperature:55|g
+
+which is 21 characters, plus a newline used as delimiter (22).
+Using this example, you can pack at least 20 distinct gauge values without
+problems. That will result in a UDP message of 440 bytes (22 times 20),
+which is well below the I<safe> threshold of 512.
+
+In reality, if the communication happens on a local interface, or over
+a 10G link, you are allowed much more than that.
+
 =cut
 
 sub gauge {
-    my ($name, $value) = @_;
+    my $stats = {};
 
-    $value = 0 unless defined $value;
-
-    # Didn't use '%d' because values might be floats
-    my $stats = {
-        $name => sprintf "%s|g", $value
-    };
+    while (my($name, $value) = splice(@_, 0, 2)) {
+        $value = 0 unless defined $value;
+        # Didn't use '%d' because values might be floats
+        push @{ $stats->{$name} }, sprintf("%s|g", $value);
+    }
 
     return Net::Statsd::send($stats, 1);
 }
@@ -245,7 +276,7 @@ sub send {
         return;
     }
 
-    # cache the socket to avoid dns and socket creation overheads
+    # Cache the socket to avoid dns and socket creation overheads
     # (this boosts performance from ~6k to >60k sends/sec)
     if (!$SOCK || !$SOCK_PEER || "$HOST:$PORT" ne $SOCK_PEER) {
 
@@ -269,8 +300,16 @@ sub send {
     my $all_sent = 1;
 
     keys %{ $sampled_data }; # reset iterator
-    while ( my ($stat, $value) = each %{ $sampled_data } ) {
-        my $packet = "$stat:$value";
+    while (my ($stat, $value) = each %{ $sampled_data }) {
+        my $packet;
+        if (ref $value eq 'ARRAY') {
+            # https://github.com/etsy/statsd/blob/master/docs/metric_types.md#multi-metric-packets
+            $packet = join("\n", map { "$stat:$_" } @{ $value });
+        }
+        else {
+            # Single value as scalar
+            $packet = "$stat:$value";
+        }
         # send() returns the number of characters sent, or undef on error.
         my $r = send($SOCK, $packet, 0);
         if (!defined $r) {
@@ -334,7 +373,18 @@ sub _sample_data {
             # Uglier, but if there's no data to be sampled,
             # we get a clean undef as returned value
             $sampled_data ||= {};
-            $sampled_data->{$stat} = sprintf "%s|@%s", $value, $sample_rate;
+
+            # Multi-metric packet:
+            # https://github.com/etsy/statsd/blob/master/docs/metric_types.md#multi-metric-packets
+            if (ref $value eq 'ARRAY') {
+                foreach my $v ( @{ $value } ) {
+                    push @{ $sampled_data->{$stat} }, sprintf("%s|@%s", $v, $sample_rate);
+                }
+            }
+            # Single value as scalar
+            else {
+                $sampled_data->{$stat} = sprintf "%s|@%s", $value, $sample_rate;
+            }
         }
     }
 

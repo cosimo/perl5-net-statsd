@@ -5,7 +5,7 @@ use IO::Select;
 
 $| = 1;
 
-use vars qw ($socket @messages $select);
+use vars qw ($socket @messages $select $PACKETS_RECEIVED);
 
 sub start {
 
@@ -14,6 +14,8 @@ sub start {
         LocalAddr => '127.0.0.1',
         Proto     => 'udp',
     ) or die "unable to create socket: $!\n";
+
+    $PACKETS_RECEIVED = 0;
 
     $select = IO::Select->new($socket);
     reset_messages();
@@ -26,50 +28,59 @@ sub run {
     while (1) {
         my @ready = $select->can_read($timeout);
         last unless @ready;
-        
+
         my $msg = {};
         $socket->recv($_data, 1024);
+
         $_data =~ s/^\s+//;
         $_data =~ s/\s+$//;
         $msg->{_raw_data} = $_data;
+
+        # Don't count 'quit' as a received packet
         last if $_data =~ /^quit/i;
-        
-        my @bits = split(':', $_data);
 
-        my $key = shift @bits;
-        $key =~ s/\s+/_/g;
-        $key =~ s/\//-/g;
-        $key =~ s/[^a-zA-Z_\-0-9\.]//g;
-        $msg->{key} = $key;
+        $PACKETS_RECEIVED++;
 
-        if (@bits == 0 || ! defined $bits[0]) {
-            push @bits, 1;
-        }
+        # Multi-metric packets are separated by a newline
+        for my $pkt (split "\n", $_data) {
 
-        for (@bits) {
-            my @fields = split m{\|};
+            my @bits = split(':', $pkt);
 
-            if (@fields == 1 || ! defined $fields[1]) {
-                $msg->{error} = "bad line";
-                next;
+            my $key = shift @bits;
+            $key =~ s/\s+/_/g;
+            $key =~ s/\//-/g;
+            $key =~ s/[^a-zA-Z_\-0-9\.]//g;
+            $msg->{key} = $key;
+
+            if (@bits == 0 || ! defined $bits[0]) {
+                push @bits, 1;
             }
 
-            # Timer
-            if ($fields[1] eq 'ms') {
-                push @{$msg->{timers}}, $fields[0];
-            }
+            for (@bits) {
+                my @fields = split m{\|};
 
-            # Gauge (FIXME I'll just pretend this is correct)
-            elsif ($fields[1] eq 'g') {
-                push @{$msg->{gauges}}, $fields[0];
-            }
-
-            # Counter, evt. sampled
-            else {
-                if ($fields[2] && $fields[2] =~ /^\s*@([\d\.]+)/) {
-                    $msg->{sample_rate} = $1;
+                if (@fields == 1 || ! defined $fields[1]) {
+                    $msg->{error} = "bad line";
+                    next;
                 }
-                push @{$msg->{counters}}, $fields[0];
+
+                # Timer
+                if ($fields[1] eq 'ms') {
+                    push @{$msg->{timers}}, $fields[0];
+                }
+
+                # Gauge
+                elsif ($fields[1] eq 'g') {
+                    push @{$msg->{gauges}}, $fields[0];
+                }
+
+                # Counter, evt. sampled
+                else {
+                    if ($fields[2] && $fields[2] =~ /^\s*@([\d\.]+)/) {
+                        $msg->{sample_rate} = $1;
+                    }
+                    push @{$msg->{counters}}, $fields[0];
+                }
             }
         }
         push @messages, $msg;
@@ -85,10 +96,23 @@ sub get_messages {
 sub get_and_reset_messages {
     my $ret = get_messages();
     reset_messages();
-    return $ret
+    return $ret;
 }
 
-sub reset_messages { @messages = () }
+sub packets_received {
+    my $curr_value = $PACKETS_RECEIVED;
+    $PACKETS_RECEIVED = 0;
+    return $curr_value;
+}
+
+sub process {
+    stop();
+    run();
+}
+
+sub reset_messages {
+    @messages = ();
+}
 
 sub stop {
     my $s_send = IO::Socket::INET->new(
@@ -97,11 +121,6 @@ sub stop {
     ) or die "failed to create client socket: $!\n";
     $s_send->send("quit");
     $s_send->close();
-}
-
-sub process {
-    stop();
-    run();
 }
 
 1;
