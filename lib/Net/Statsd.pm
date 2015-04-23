@@ -311,7 +311,7 @@ sub send {
             $packet = "$stat:$value";
         }
         # send() returns the number of characters sent, or undef on error.
-        my $r = send($SOCK, $packet, 0);
+        my $r = CORE::send($SOCK, $packet, 0);
         if (!defined $r) {
             #warn "Net::Statsd send error: $!";
             $all_sent = 0;
