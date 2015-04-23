@@ -1,9 +1,12 @@
 Change history for Net::Statsd
 
-0.09_01 - Thu Jun 05 18:09:01 CEST 2014
+0.11 - Thu Apr 23 16:27:58 CEST 2015
 
-    Implemented multi-metric gauge sending. Thanks to Ville Mattila for
-    the initial patch.
+    Fixed RT#103913, use note() instead of diag() in the test suite.
+    Thanks to Zefram for reporting it and sending a patch.
+
+    Implemented experimental multi-metric gauge sending.
+    Thanks to Ville Mattila for the initial patch.
 
 0.09 - Wed Jun 04 16:23:01 CEST 2014
 
