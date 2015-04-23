@@ -136,7 +136,7 @@ ok(ref $msgs eq 'ARRAY');
 is(scalar @{ $msgs } => 1,
     "Multiple values for same metric should be aggregated in the same messge");
 
-#use Data::Dumper; diag(Dumper($msgs));
+#use Data::Dumper; note(Dumper($msgs));
 is_deeply($msgs, [ {
     key => 'core.temperature',
     gauges => [ 55, 56 ],
@@ -163,7 +163,7 @@ for (1 .. $tries) {
 
 my $expected_seen = $tries * $sample_rate;
 my $num_seen = scalar @messages;
-diag("Got $num_seen samples out of $tries tries (sample rate $sample_rate)");
+note("Got $num_seen samples out of $tries tries (sample rate $sample_rate)");
 cmp_ok(
     int(abs($num_seen - $expected_seen)), '<=', (int($expected_seen * 0.05) | 1),
     "5% delta or less"
