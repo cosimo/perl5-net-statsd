@@ -1,3 +1,7 @@
+=pod
+
+=encoding utf-8
+
 =head1 NAME
 
 Net::Statsd - Perl client for Etsy's statsd daemon

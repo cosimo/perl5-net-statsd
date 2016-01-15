@@ -1,7 +1,6 @@
 package Net::Statsd;
 
-# ABSTRACT: Sends statistics to the stats daemon over UDP
-# Cosimo Streppone <cosimo@cpan.org>
+# ABSTRACT: Perl client for Etsy's statsd daemon
 
 use strict;
 use warnings;
@@ -13,10 +12,6 @@ our $PORT = 8125;
 
 my $SOCK;
 my $SOCK_PEER;
-
-=head1 NAME
-
-Net::Statsd - Perl client for Etsy's statsd daemon
 
 =head1 SYNOPSIS
 

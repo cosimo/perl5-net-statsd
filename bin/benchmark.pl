@@ -1,12 +1,11 @@
-#!/usr/bin/perl
+#!perl
 
-=head1 NAME
-
-benchmark.pl - report max send rate
+# PODNAME: benchmark.pl
+# ABSTRACT: Report max send rate for Net::Statsd client
 
 =head1 DESCRIPTION
 
-A basic test of the time is takes to send stats.
+A basic test of the time is takes to send stats through Net::Statsd.
 
 =cut
 

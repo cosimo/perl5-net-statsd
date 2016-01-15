@@ -1,5 +1,12 @@
 Change history for Net::Statsd
 
+0.12 - Fri Jan 15 09:39:00 CET  2016
+
+    Fixed RT#111204. There was a t/send-one.t script included in the
+    distribution that wasn't meant to be there. It was depending on perl 5.10,
+    so it caused Net::Statsd to fail tests under 5.8.
+    Thanks to nigelgregoire@gmail.com for reporting.
+
 0.11 - Thu Apr 23 16:27:58 CEST 2015
 
     Fixed RT#103913, use note() instead of diag() in the test suite.
