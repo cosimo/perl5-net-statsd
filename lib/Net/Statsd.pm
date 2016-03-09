@@ -6,6 +6,7 @@ use strict;
 use warnings;
 use Carp ();
 use IO::Socket ();
+use Time::HiRes ();
 
 our $HOST = 'localhost';
 our $PORT = 8125;
@@ -111,6 +112,29 @@ sub timing {
     };
 
     return Net::Statsd::send($stats, $sample_rate);
+}
+
+=head2 C<get_timer($name, $sample_rate = 1)>
+
+Start timer for the metric. Function returns timer object. When you call this
+object, it sends timing data to statsd.
+
+    my $timer = Net::Statsd::get_timer('my.func.time');
+    ...; # here comes your code
+    $timer->(); # send timing to server
+
+=cut
+
+sub get_timer {
+    my ( $name, $sample_rate ) = @_;
+    my $start = [Time::HiRes::gettimeofday];
+    return sub {
+        Net::Statsd::timing(
+            $name,
+            Time::HiRes::tv_interval($start) * 1000,
+            $sample_rate,
+        );
+    };
 }
 
 =head2 C<increment($counter, $sample_rate=1)>
