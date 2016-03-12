@@ -19,7 +19,7 @@ BEGIN {
 
 use strict;
 use warnings;
-use Test::More tests => 17;
+use Test::More tests => 18;
 use Net::Statsd;
 
 my $dirname;
@@ -52,6 +52,16 @@ is_deeply($msgs, [ {
     key => 'test.timer',
     timers => [ 345 ],
     _raw_data => 'test.timer:345|ms'
+} ], "Sent 1 timing event. Received correctly.");
+
+my $timer = Net::Statsd::get_timer('test.get_timer');
+$timer->();
+$msgs = MockServer::get_and_reset_messages();
+my $time_ms = $msgs->[0]{timers}[0];
+is_deeply($msgs, [ {
+    key => 'test.get_timer',
+    timers => [ $time_ms ],
+    _raw_data => "test.get_timer:$time_ms|ms"
 } ], "Sent 1 timing event. Received correctly.");
 
 Net::Statsd::increment('test.counter');
