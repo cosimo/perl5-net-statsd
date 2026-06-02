@@ -1,5 +1,17 @@
 Change history for Net::Statsd
 
+0.13 - Tue Jun  1 22:16:11 CET  2026
+
+    [Security] CVE-2026-46739
+
+    Metric names and values are now validated to ensure they do not contain
+    characters below ASCII 32 (including newlines), colon (":") or pipe ("|")
+    characters that might allow metric injection. Offending calls now croak.
+
+    More than 10 years since the latest release :-)
+
+    Thanks to rrwo@cpansec.org for the report and suggestions.
+
 0.12 - Fri Jan 15 09:39:00 CET  2016
 
     Fixed RT#111204. There was a t/send-one.t script included in the
