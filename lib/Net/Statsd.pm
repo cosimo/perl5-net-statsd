@@ -87,6 +87,20 @@ sample_rate value. (e.g. a sample rate of 0.5 would indicate that
 approximately only half of the metrics given to this module would
 actually be sent to statsd).
 
+=head1 SECURITY
+
+To prevent B<metric injection> (CVE-2026-46739), metric names and values are
+validated before being sent. The statsd wire format is C<name:value|type>, and
+several metrics can be packed into one UDP datagram separated by newlines, so a
+name or value containing a newline (or any control character below ASCII 32), a
+colon (C<:>) or a pipe (C<|>) could be used to forge extra metric lines.
+
+Any such name or value causes the offending call (C<timing>, C<increment>,
+C<decrement>, C<update_stats>, C<gauge> or C<send>) to throw via
+C<Carp::croak>. Note that values passed to C<send()> already contain a
+formatted C<|type> suffix, so C<send()> only re-validates the metric I<names>;
+raw values are validated by the higher level functions before formatting.
+
 =head1 FUNCTIONS
 
 =cut
@@ -106,6 +120,8 @@ sub timing {
     if (! defined $sample_rate) {
         $sample_rate = 1;
     }
+
+    _validate_metric_value($time);
 
     my $stats = {
         $name => sprintf "%d|ms", $time
@@ -218,6 +234,8 @@ sub update_stats {
         Carp::croak("Usage: update_stats(\$str, ...) or update_stats(\\\@list, ...)");
     }
 
+    _validate_metric_value($delta);
+
     my %data = map { $_ => sprintf "%s|c", $delta } @{ $stats };
 
     return Net::Statsd::send(\%data, $sample_rate)
@@ -268,6 +286,7 @@ sub gauge {
 
     while (my($name, $value) = splice(@_, 0, 2)) {
         $value = 0 unless defined $value;
+        _validate_metric_value($value);
         # Didn't use '%d' because values might be floats
         push @{ $stats->{$name} }, sprintf("%s|g", $value);
     }
@@ -285,6 +304,13 @@ Squirt the metrics over UDP.
 
 sub send {
     my ($data, $sample_rate) = @_;
+
+    # Validate metric names here: every metric, regardless of which
+    # public function was used to record it, funnels through send(),
+    # so this single check also guards direct Net::Statsd::send() calls.
+    if ($data && ref $data eq 'HASH') {
+        _validate_metric_name($_) for keys %{ $data };
+    }
 
     my $sampled_data = _sample_data($data, $sample_rate);
 
@@ -408,6 +434,39 @@ sub _sample_data {
     }
 
     return $sampled_data;
+}
+
+=head2 C<_validate_metric_name($name)>
+
+=head2 C<_validate_metric_value($value)>
+
+B<These methods are used internally, they're not part of the public interface.>
+
+Guard against B<metric injection> (CVE-2026-46739). The statsd wire format is
+C<name:value|type>, and multiple metrics are packed in a single UDP datagram
+separated by newlines. A metric name or value that contains a newline (or any
+other control character below ASCII 32), a colon (C<:>) or a pipe (C<|>) could
+therefore forge additional, attacker-controlled metric lines.
+
+Both functions C<Carp::croak> when the input contains any of those characters.
+Names are validated centrally in C<send()>; raw values are validated at each
+recording entry point (C<timing>, C<update_stats>, C<gauge>) before the
+C<|type> suffix is appended.
+
+=cut
+
+sub _validate_metric_name {
+    my ($name) = @_;
+    Carp::croak("Net::Statsd: malformed metric name")
+        if !defined $name || $name =~ /[\x00-\x1f:|]/;
+    return $name;
+}
+
+sub _validate_metric_value {
+    my ($value) = @_;
+    Carp::croak("Net::Statsd: malformed metric value")
+        if defined $value && $value =~ /[\x00-\x1f:|]/;
+    return $value;
 }
 
 1;
